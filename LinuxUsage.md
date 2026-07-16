@@ -31,7 +31,9 @@
 
 ## 文本处理
 `grep`
+
 `sed`
+
 `awk`
 
 ## 其他
@@ -135,7 +137,6 @@
 
 `git reflog`	查看操作记录
 
-
 ## 工作区内
 `git rm [filename]`	删除文件
 
@@ -147,6 +148,11 @@
 `git reset HEAD [filename]`	取消暂存区的改动
 
 `git commit -m 'XXX'`	将暂存区里的内容提交到当前分支
+> `feat:`新增
+> `fix:`修bug
+> `docs:`更新README
+> `refactor:`代码重构
+> `chore:`杂活
 
 ## 版本管理
 `git reset --hard HEAD^ or HAED~1 or [版本号]`
