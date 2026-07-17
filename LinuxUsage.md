@@ -89,6 +89,10 @@
 
 `pip uninstall [packagename]`
 
+`pip freeze > requirements.txt`   导出当前环境的所有包
+
+`pip install -r requirements.txt` 在新环境中一键安装
+
 `conda env export > environment.yml`  导出环境：
 
 `conda env create -f environment.yml` 复现环境：
@@ -179,3 +183,7 @@
 `git stash list`	列出被保存的工作现场
 
 `git stash pop`	返回到工作现场
+
+`git remote add origin git@github.com:XXXXXXXX` 连接远程仓库
+
+`git push -u origin main` 上传到远程仓库
