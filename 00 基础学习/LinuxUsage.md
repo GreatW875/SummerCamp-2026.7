@@ -184,6 +184,10 @@
 
 `git stash pop`	返回到工作现场
 
+`git remote -v`   查看当前remote
+
 `git remote add origin git@github.com:XXXXXXXX` 连接远程仓库
 
-`git push -u origin main` 上传到远程仓库
+`git remote set-url origin git@github.com:新用户名/新仓库名.git` 修改远程仓库地址
+
+`git push (-u) origin main` 上传到远程仓库，设了 -u 之后的便利：以后推送或拉取不需要再写全名，直接：git push/pull
