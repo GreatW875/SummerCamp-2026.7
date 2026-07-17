@@ -7,11 +7,11 @@ from loguru import logger
 PROJECT_DIR = Path(__file__).parent.parent
 
 # 1. 配置日志：文件写入项目根目录
-logger.add(PROJECT_DIR / "file_error.log", rotation="1 MB",
+logger.add(PROJECT_DIR / "data" / "file_error.log", rotation="1 MB",
            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}")
 
 # 2. 指定要操作的文件（在项目根目录下）
-filename = PROJECT_DIR / "missing.csv"
+filename = PROJECT_DIR / "data" / "missing.csv"
 
 # 3. 尝试打开文件（只读模式 'r'）
 try:

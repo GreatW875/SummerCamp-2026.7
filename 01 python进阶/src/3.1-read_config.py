@@ -1,8 +1,9 @@
 """读取 config.json 并应用参数"""
 import json
+from pathlib import Path
 
 # 读取配置文件
-with open("config.json") as f:
+with open(Path(__file__).parent.parent / "cfg" / "config.json") as f:
     config = json.load(f)
 
 threshold = config["threshold"]
