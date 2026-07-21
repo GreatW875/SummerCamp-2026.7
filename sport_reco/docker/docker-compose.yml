@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  sport-reco:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: sport_reco
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - ../artifacts:/app/artifacts
+      - ../ssl:/app/ssl
+      - ../configs:/app/configs
+    environment:
+      - SPORT_RECO_ENV=prod
+      - FLASK_SECRET_KEY=change-me-in-production
+    restart: unless-stopped

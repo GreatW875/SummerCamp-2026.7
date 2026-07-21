@@ -1,0 +1,32 @@
+# 特征提取参数
+time_domain:
+  - mean
+  - variance
+  - std
+  - min
+  - max
+  - range
+  - rms
+  - zero_crossing_rate
+  - signal_magnitude_area
+  - interquartile_range
+
+freq_domain:
+  - dominant_frequency
+  - spectral_energy
+  - spectral_entropy
+  - mean_frequency
+  - frequency_bands:
+      - [0.5, 3.0]    # 走路频带
+      - [3.0, 6.0]    # 跑步频带
+
+# 每轴单独提取特征
+per_axis: true
+# 使用哪些传感器通道
+channels:
+  - acc_x
+  - acc_y
+  - acc_z
+  - gyro_x
+  - gyro_y
+  - gyro_z

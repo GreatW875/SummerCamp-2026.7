@@ -1,0 +1,93 @@
+# 运动分析 Web 应用 - 默认配置（所有环境共用）
+app:
+  name: "运动分析平台"
+  version: "0.1.0"
+  debug: false
+  host: "0.0.0.0"
+  port: 5000
+
+# WebSocket 配置
+websocket:
+  # 数据采集窗口（秒）
+  window_seconds: 2.0
+  # 窗口重叠率（0~1）
+  overlap_ratio: 0.5
+  # 推理间隔（秒）
+  inference_interval: 1.0
+  # 前端传感器采样率（Hz）
+  imu_sample_rate: 50
+  gps_sample_rate: 1
+
+# 信号预处理参数
+preprocess:
+  # 巴特沃斯低通滤波器
+  filter:
+    order: 4
+    cutoff_freq: 20.0        # 截止频率 Hz（IMU 有效信号 < 20Hz）
+    sample_rate: 50.0        # 采样频率 Hz
+  # 滑窗参数
+  window:
+    size_seconds: 2.0
+    step_seconds: 1.0
+
+# 特征提取参数
+features:
+  # 时域特征
+  time_domain:
+    - mean
+    - std
+    - min
+    - max
+    - range
+    - rms
+    - zero_crossing_rate
+    - signal_magnitude_area
+  # 频域特征
+  freq_domain:
+    - dominant_frequency
+    - spectral_energy
+    - spectral_entropy
+    - mean_freq
+    - frequency_bands_energy
+
+# 模型配置
+model:
+  # 分类器类型: svm, random_forest
+  classifier: random_forest
+  # 模型文件路径（相对于 artifacts/models/）
+  model_file: gait_classifier.pkl
+  # 运动会话超时（秒）
+  session_timeout: 600
+  # 推理置信度阈值
+  confidence_threshold: 0.70
+  # 分类标签
+  labels:
+    - static
+    - walking
+    - running
+
+# 数据库
+database:
+  type: sqlite
+  path: sport_reco.db
+  # 会话保留天数
+  retention_days: 30
+
+# SSL 证书（开发环境用）
+ssl:
+  cert_dir: ssl
+  cert_file: cert.pem
+  key_file: key.pem
+
+# 日志
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  file: logs/app.log
+  max_bytes: 10485760   # 10MB
+  backup_count: 5
+
+# CORS 允许的来源
+cors:
+  allowed_origins:
+    - "*"

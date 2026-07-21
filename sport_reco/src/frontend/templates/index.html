@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动分析 - Dashboard</title>
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- Leaflet CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!--  侧边导航栏 -->
+<!-- ============================================================ -->
+<nav class="sidebar" id="sidebar">
+    <a class="nav-item active" data-page="monitor" onclick="navigateTo('monitor')">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">实时监控</span>
+    </a>
+    <a class="nav-item" data-page="history" onclick="navigateTo('history')">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">历史记录</span>
+    </a>
+    <a class="nav-item" data-page="mobile" onclick="navigateTo('mobile')">
+        <span class="nav-icon">📱</span>
+        <span class="nav-label">手机采集</span>
+    </a>
+</nav>
+
+<!-- ============================================================ -->
+<!--  主内容区域 -->
+<!-- ============================================================ -->
+<div class="main-wrap">
+
+<!-- ============================================================ -->
+<!--  顶部导航 -->
+<!-- ============================================================ -->
+<header class="topbar">
+    <div class="topbar-left">
+        <h1 class="app-title">🏃 运动分析平台</h1>
+        <span class="app-version">v0.1</span>
+    </div>
+    <div class="topbar-center">
+        <div class="connection-status" id="connectionStatus">
+            <span class="conn-dot disconnected" id="connDot"></span>
+            <span class="conn-text" id="connText">未连接</span>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button class="icon-btn" onclick="toggleDemo()" title="演示模式" id="demoBtn">
+            <span id="demoIcon">🎬</span> 演示
+        </button>
+        <button class="icon-btn" onclick="refreshHistory()" title="刷新历史">🔄</button>
+    </div>
+</header>
+
+<!-- ============================================================ -->
+<!--  主内容区: 三栏布局 (焦点区 + 波形 + 地图) - 支持拖拽缩放 -->
+<!-- ============================================================ -->
+<div class="dashboard-layout page-view" id="dashboardLayout">
+
+    <!-- 左栏: 焦点区 -->
+    <aside class="panel panel-focus" id="focusPanel">
+        <!-- 当前运动类型 -->
+        <div class="focus-card" id="focusCard">
+            <div class="focus-placeholder" id="focusPlaceholder">
+                <span class="placeholder-icon">📱</span>
+                <p>等待手机端连接...</p>
+                <p class="placeholder-hint">请在手机浏览器中打开采集页面</p>
+            </div>
+            <div class="focus-content hidden" id="focusContent">
+                <span class="focus-icon" id="focusIcon">🏃</span>
+                <span class="focus-label" id="focusLabel">跑步</span>
+                <span class="focus-confidence" id="focusConfidence"></span>
+                <!-- 全部类别概率条 -->
+                <div class="prob-bars" id="probBars"></div>
+            </div>
+        </div>
+
+        <!-- 步态参数 -->
+        <div class="gait-panel" id="gaitPanel">
+            <h3 class="panel-title">步态参数</h3>
+            <div class="gait-grid">
+                <div class="gait-item">
+                    <span class="gait-label">步频</span>
+                    <span class="gait-value" id="gaitCadence">--</span>
+                    <span class="gait-unit">步/分</span>
+                </div>
+                <div class="gait-item">
+                    <span class="gait-label">速度</span>
+                    <span class="gait-value" id="gaitSpeed">--</span>
+                    <span class="gait-unit">km/h</span>
+                </div>
+                <div class="gait-item">
+                    <span class="gait-label">距离</span>
+                    <span class="gait-value" id="gaitDistance">--</span>
+                    <span class="gait-unit">km</span>
+                </div>
+                <div class="gait-item">
+                    <span class="gait-label">时长</span>
+                    <span class="gait-value" id="gaitDuration">--</span>
+                    <span class="gait-unit">秒</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 手动纠正 -->
+        <div class="correction-panel hidden" id="correctionPanel">
+            <h3 class="panel-title">纠正运动类型</h3>
+            <div class="correction-btns" id="correctionBtns"></div>
+        </div>
+    </aside>
+
+    <!-- 左拖动分隔条 -->
+    <div class="resize-handle" id="resizeHandle1" data-target="left"></div>
+
+    <!-- 中栏: 传感器波形 -->
+    <main class="panel panel-chart">
+        <div class="chart-header">
+            <h3 class="panel-title">传感器波形</h3>
+            <div class="chart-toggles">
+                <button class="toggle-btn active" data-channel="acc" onclick="toggleChannel('acc', this)">加速度</button>
+                <button class="toggle-btn" data-channel="gyro" onclick="toggleChannel('gyro', this)">角速度</button>
+                <button class="toggle-btn" data-channel="composite" onclick="toggleChannel('composite', this)">合成量</button>
+            </div>
+        </div>
+        <div class="chart-container" id="waveChart"></div>
+    </main>
+
+    <!-- 右拖动分隔条 -->
+    <div class="resize-handle" id="resizeHandle2" data-target="right"></div>
+
+    <!-- 右栏: 地图 -->
+    <aside class="panel panel-map">
+        <h3 class="panel-title">GPS 轨迹</h3>
+        <div class="map-container" id="trackMap"></div>
+    </aside>
+</div>
+
+<!-- ============================================================ -->
+<!--  底部栏: 历史会话 (监控视图) -->
+<!-- ============================================================ -->
+<footer class="bottombar page-view" id="monitorBottombar">
+    <div class="history-list" id="historyList">
+        <span class="history-hint">没有历史会话</span>
+    </div>
+</footer>
+
+<!-- ============================================================ -->
+<!--  历史记录视图 -->
+<!-- ============================================================ -->
+<div class="history-view page-view hidden" id="historyView">
+    <div class="history-header">
+        <h2>历史会话记录</h2>
+        <button class="icon-btn" onclick="refreshHistory()" title="刷新">🔄 刷新</button>
+    </div>
+    <div class="history-table-wrap">
+        <table class="history-table" id="historyTable">
+            <thead>
+                <tr>
+                    <th>运动类型</th>
+                    <th>开始时间</th>
+                    <th>时长</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr><td colspan="4" class="empty-hint">暂无历史会话</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div><!-- /.main-wrap -->
+
+<!-- Socket.IO -->
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

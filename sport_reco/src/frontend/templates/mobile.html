@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>运动分析 - 手机采集</title>
+    <!-- Leaflet 地图 CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+</head>
+<body class="theme-dark">
+
+<!-- ============================================================ -->
+<!--  状态栏 -->
+<!-- ============================================================ -->
+<header class="status-bar" id="statusBar">
+    <span class="status-title">运动分析</span>
+    <span class="status-indicator" id="statusIndicator">
+        <span class="dot dot-disconnected"></span>
+        <span class="status-text" id="statusText">未连接</span>
+    </span>
+</header>
+
+<!-- ============================================================ -->
+<!--  视图 1: 配置视图 (运动前) -->
+<!-- ============================================================ -->
+<main class="view config-view" id="configView">
+    <div class="view-content">
+        <!-- 传感器状态卡片 -->
+        <div class="card sensor-card">
+            <h2 class="card-title">传感器状态</h2>
+            <div class="sensor-list">
+                <div class="sensor-item">
+                    <span class="sensor-label">加速度计</span>
+                    <span class="sensor-badge" id="imuStatus">检测中...</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">陀螺仪</span>
+                    <span class="sensor-badge" id="gyroStatus">检测中...</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">GPS</span>
+                    <span class="sensor-badge" id="gpsStatus">检测中...</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">连接状态</span>
+                    <span class="sensor-badge" id="wsStatus">未连接</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 运动类型选择卡片 -->
+        <div class="card type-card">
+            <h2 class="card-title">选择运动类型</h2>
+            <div class="type-grid">
+                <button class="type-btn" data-label="static" onclick="selectType('static', this)">
+                    <span class="type-icon">🧍</span>
+                    <span class="type-name">静止</span>
+                </button>
+                <button class="type-btn" data-label="walking" onclick="selectType('walking', this)">
+                    <span class="type-icon">🚶</span>
+                    <span class="type-name">走路</span>
+                </button>
+                <button class="type-btn active" data-label="running" onclick="selectType('running', this)">
+                    <span class="type-icon">🏃</span>
+                    <span class="type-name">跑步</span>
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 开始运动 CTA 按钮 -->
+    <div class="action-area">
+        <button class="cta-btn" id="startBtn" onclick="startSession()">
+            <span class="cta-text">开始运动</span>
+        </button>
+    </div>
+</main>
+
+<!-- ============================================================ -->
+<!--  视图 2: 运动视图 (运动中) -->
+<!-- ============================================================ -->
+<main class="view sport-view hidden" id="sportView">
+    <!-- 计时器 + 状态 + 视图切换 -->
+    <div class="sport-header">
+        <span class="timer" id="timerDisplay">00:00:00</span>
+        <div class="header-right">
+            <button class="view-toggle-btn" id="mapToggleBtn" onclick="toggleMapView()" title="切换地图">
+                <span id="mapToggleIcon">🗺️</span>
+            </button>
+            <span class="recording-dot" id="recordingDot">● 采集中</span>
+        </div>
+    </div>
+
+    <!-- 核心区域: 运动类型大卡片 -->
+    <div class="sport-main" id="sportMain">
+        <div class="activity-card" id="activityCard">
+            <span class="activity-icon" id="activityIcon">🏃</span>
+            <span class="activity-label" id="activityLabel">跑步</span>
+            <span class="activity-confidence" id="activityConfidence"></span>
+            <!-- 全部类别概率条 -->
+            <div class="prob-bars" id="probBars"></div>
+        </div>
+        <div class="activity-metrics" id="activityMetrics">
+            <span class="metric">
+                <span class="metric-label">步频</span>
+                <span class="metric-value" id="metricCadence">--</span>
+                <span class="metric-unit">步/分</span>
+            </span>
+            <span class="metric">
+                <span class="metric-label">速度</span>
+                <span class="metric-value" id="metricSpeed">--</span>
+                <span class="metric-unit">km/h</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- 次要指标栏 (数据视图) -->
+    <div class="sport-secondary" id="secondaryBar">
+        <div class="sec-metric">
+            <span class="sec-label">距离</span>
+            <span class="sec-value" id="metricDistance">0.00 km</span>
+        </div>
+        <div class="sec-metric">
+            <span class="sec-label">采样</span>
+            <span class="sec-value" id="metricSamples">0</span>
+        </div>
+    </div>
+
+    <!-- 地图视图 (默认隐藏) -->
+    <div class="mobile-map-container hidden" id="mobileMapView">
+        <div class="mobile-map" id="mobileMap"></div>
+    </div>
+
+    <!-- 结束运动按钮 -->
+    <div class="action-area">
+        <button class="end-btn" id="endBtn" onclick="endSession()">
+            <span class="btn-text">⏹ 结束运动</span>
+        </button>
+    </div>
+</main>
+
+<!-- ============================================================ -->
+<!--  结束确认弹窗 -->
+<!-- ============================================================ -->
+<div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal-sheet">
+        <p class="modal-title">确定要结束运动吗？</p>
+        <p class="modal-desc" id="confirmDuration"></p>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" onclick="cancelEndSession()">继续运动</button>
+            <button class="modal-btn modal-btn-danger" onclick="confirmEndSession()">确认结束</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  运动小结弹窗 -->
+<!-- ============================================================ -->
+<div class="modal-overlay hidden" id="summaryModal">
+    <div class="modal-sheet">
+        <p class="modal-title">本次运动小结</p>
+        <div class="summary-content" id="summaryContent"></div>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-primary" onclick="closeSummary()">完成</button>
+        </div>
+    </div>
+</div>
+
+<!-- Socket.IO 客户端库 (必须在 collector.js 之前加载) -->
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/collector.js') }}"></script>
+</body>
+</html>

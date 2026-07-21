@@ -1,0 +1,15 @@
+# 信号预处理参数
+filter:
+  type: butterworth_lowpass
+  order: 4
+  cutoff_freq: 20.0
+  sample_rate: 50.0
+
+window:
+  size: 100          # 样本数 (2秒 @ 50Hz)
+  step: 50           # 样本数 (1秒 @ 50Hz)
+  min_samples: 20    # 最小有效样本数
+
+smoothing:
+  method: moving_average
+  window_size: 5

@@ -1,0 +1,10 @@
+# 开发环境覆盖配置
+app:
+  debug: true
+
+logging:
+  level: INFO
+
+cors:
+  allowed_origins:
+    - "*"
