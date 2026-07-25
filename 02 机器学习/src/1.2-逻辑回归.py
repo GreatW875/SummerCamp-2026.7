@@ -110,18 +110,26 @@ def accuracy(y_pred, y_true):
 
 
 # ============================================================
-# 第一步：造数据 -- 两个类别的二分类数据
+# 第一步：造数据 -- 类别重叠 + 标签噪声 + 噪声特征，制造过拟合场景
 # ============================================================
 np.random.seed(42)
 
-n_samples = 200  # 每类 100 个
+n_samples = 200
+n_useful = 2    # 有效特征数（用于分类）
+n_noise_feat = 8  # 纯噪声特征数（与标签无关，用来诱导过拟合）
 
-# 类别 0：以 (2, 2) 为中心
-X0 = np.random.randn(n_samples // 2, 2) + np.array([2, 2])
+# --- 有效特征：两个类别中心近、标准差大（重叠严重）---
+X0_useful = np.random.randn(n_samples // 2, n_useful) * 1.5 + np.array([1.2, 1.2])
+X1_useful = np.random.randn(n_samples // 2, n_useful) * 1.5 + np.array([-1.2, -1.2])
+
+# --- 噪声特征：纯随机，与标签完全无关 ---
+X0_noise = np.random.randn(n_samples // 2, n_noise_feat) * 1.0
+X1_noise = np.random.randn(n_samples // 2, n_noise_feat) * 1.0
+
+# 拼接：前2列有效，后8列噪声
+X0 = np.hstack([X0_useful, X0_noise])
+X1 = np.hstack([X1_useful, X1_noise])
 y0 = np.zeros(n_samples // 2)
-
-# 类别 1：以 (-2, -2) 为中心
-X1 = np.random.randn(n_samples // 2, 2) + np.array([-2, -2])
 y1 = np.ones(n_samples // 2)
 
 # 合并并打乱
@@ -131,12 +139,20 @@ shuffle_idx = np.random.permutation(n_samples)
 X = X[shuffle_idx]
 y = y[shuffle_idx]
 
-# 划分训练集 / 测试集（80% / 20%）
-split = int(0.8 * n_samples)
+# 加入标签噪声：随机翻转 15% 的标签
+noise_ratio = 0.15
+n_noise = int(n_samples * noise_ratio)
+noise_idx = np.random.choice(n_samples, n_noise, replace=False)
+y[noise_idx] = 1 - y[noise_idx]
+
+# 划分训练集 / 测试集（50% / 50%，训练集少 + 噪声特征多 = 容易过拟合）
+split = int(0.5 * n_samples)
 X_train, X_test = X[:split], X[split:]
 y_train, y_test = y[:split], y[split:]
 
 print(f"数据形状: X_train {X_train.shape}, X_test {X_test.shape}")
+print(f"有效特征: {n_useful} 个，噪声特征: {n_noise_feat} 个（共 {n_useful + n_noise_feat} 个特征）")
+print(f"标签噪声比例: {noise_ratio:.0%}（{n_noise} 个样本被翻转）")
 print(f"训练集正类比例: {y_train.mean():.1%}")
 print(f"测试集正类比例: {y_test.mean():.1%}")
 print("-" * 60)
@@ -144,9 +160,9 @@ print("-" * 60)
 # ============================================================
 # 第二步：训练 -- 对比无正则化 vs L2 正则化
 # ============================================================
-lr = 0.1
-n_epochs = 500
-l2_lambda = 0.5  # L2 正则化系数
+lr = 0.5
+n_epochs = 100
+l2_lambda = 0.1  # L2 正则化系数
 
 # --- 模型 A：无正则化 ---
 w_no_reg, b_no_reg, loss_no_reg = train_logistic_regression(
@@ -175,37 +191,41 @@ print(f"{'训练集准确率':20s} {accuracy(train_pred_no, y_train):>12.2%} {ac
 print(f"{'测试集准确率':20s} {accuracy(test_pred_no, y_test):>12.2%} {accuracy(test_pred_l2, y_test):>12.2%}")
 print(f"{'最终损失':20s} {loss_no_reg[-1]:>12.4f} {loss_l2[-1]:>12.4f}")
 print("-" * 60)
-print(f"观察：L2 正则化使权重平方和更小（{np.sum(w_l2**2):.4f} < {np.sum(w_no_reg**2):.4f}），")
-print(f"权重被'压小'了，模型更简单，防止过拟合。")
+print(f"观察：")
+print(f"  1. 无正则化训练集准确率({accuracy(train_pred_no, y_train):.1%}) > L2({accuracy(train_pred_l2, y_train):.1%})，")
+print(f"     但测试集准确率 无正则化({accuracy(test_pred_no, y_test):.1%}) vs L2({accuracy(test_pred_l2, y_test):.1%})，L2 泛化更好。")
+print(f"  2. L2 权重平方和更小（{np.sum(w_l2**2):.4f} < {np.sum(w_no_reg**2):.4f}），决策边界更平滑。")
+print(f"  3. 无正则化为了拟合噪声标签，把权重练得很大 -> 过拟合。")
 
 # ============================================================
 # 第四步：可视化
 # ============================================================
 fig, axes = plt.subplots(2, 2, figsize=(14, 11))
 
-# --- 图1：数据散点图 + 决策边界 ---
+# --- 图1：数据散点图（只用前2个有效特征画） ---
 axes[0][0].scatter(X_train[y_train == 0][:, 0], X_train[y_train == 0][:, 1],
                    c='steelblue', s=20, alpha=0.6, label='类别 0 (训练)')
 axes[0][0].scatter(X_train[y_train == 1][:, 0], X_train[y_train == 1][:, 1],
                    c='crimson', s=20, alpha=0.6, label='类别 1 (训练)')
 axes[0][0].scatter(X_test[:, 0], X_test[:, 1],
                    c='gray', s=30, marker='x', label='测试集')
+axes[0][0].set_title("数据分布（前2个有效特征）\n类别重叠 + 15%标签噪声")
+axes[0][0].set_xlabel("特征 x1（有效）")
+axes[0][0].set_ylabel("特征 x2（有效）")
 
-# 画决策边界：w0*x0 + w1*x1 + b = 0  =>  x1 = -(w0*x0 + b) / w1
+# 画近似决策边界（噪声特征设为0，只用前2个有效特征投影）
+# w0*x0 + w1*x1 + b = 0  =>  x1 = -(w0*x0 + b) / w1
 x_boundary = np.linspace(X[:, 0].min() - 1, X[:, 0].max() + 1, 100)
 # 无正则化
 y_boundary_no = -(w_no_reg[0] * x_boundary + b_no_reg) / w_no_reg[1]
 axes[0][0].plot(x_boundary, y_boundary_no, color='orange', linewidth=2,
-                linestyle='-', label='无正则化')
+                linestyle='-', label='无正则化（近似边界）')
 # L2 正则化
 y_boundary_l2 = -(w_l2[0] * x_boundary + b_l2) / w_l2[1]
 axes[0][0].plot(x_boundary, y_boundary_l2, color='green', linewidth=2,
-                linestyle='--', label=f'L2 (λ={l2_lambda})')
+                linestyle='--', label=f'L2 (λ={l2_lambda})（近似边界）')
 
-axes[0][0].set_title("数据分布与决策边界对比")
-axes[0][0].set_xlabel("特征 x1")
-axes[0][0].set_ylabel("特征 x2")
-axes[0][0].legend(fontsize=8)
+axes[0][0].legend(fontsize=7)
 axes[0][0].grid(True, alpha=0.3)
 
 # --- 图2：损失下降曲线 ---
@@ -230,16 +250,23 @@ axes[1][0].set_ylabel("σ(z) = P(y=1|x)")
 axes[1][0].legend()
 axes[1][0].grid(True, alpha=0.3)
 
-# --- 图4：权重大小对比（柱状图）---
-bar_width = 0.3
-x_pos = np.arange(len(w_no_reg))
-axes[1][1].bar(x_pos - bar_width / 2, np.abs(w_no_reg), bar_width,
-               color='orange', label='无正则化')
-axes[1][1].bar(x_pos + bar_width / 2, np.abs(w_l2), bar_width,
-               color='green', label=f'L2 (λ={l2_lambda})')
+# --- 图4：全部权重大小对比（区分有效 vs 噪声特征）---
+n_total_feat = len(w_no_reg)
+bar_width = 0.35
+x_pos = np.arange(n_total_feat)
+bars_no = axes[1][1].bar(x_pos - bar_width / 2, np.abs(w_no_reg), bar_width,
+                         color='orange', label='无正则化')
+bars_l2 = axes[1][1].bar(x_pos + bar_width / 2, np.abs(w_l2), bar_width,
+                         color='green', label=f'L2 (λ={l2_lambda})')
+# 标注有效/噪声区域
+axes[1][1].axvline(x=1.5, color='gray', linestyle=':', alpha=0.5)
+axes[1][1].text(0.5, axes[1][1].get_ylim()[1] * 0.9 if axes[1][1].get_ylim()[1] > 0 else 0.5,
+                '有效特征', ha='center', fontsize=8, color='gray')
+axes[1][1].text((n_total_feat + 2) / 2, axes[1][1].get_ylim()[1] * 0.9 if axes[1][1].get_ylim()[1] > 0 else 0.5,
+                '噪声特征', ha='center', fontsize=8, color='gray')
 axes[1][1].set_xticks(x_pos)
-axes[1][1].set_xticklabels([f'w{i}' for i in range(len(w_no_reg))])
-axes[1][1].set_title("权重绝对值对比（L2 使权重更小）")
+axes[1][1].set_xticklabels([f'w{i}' for i in range(n_total_feat)], fontsize=7)
+axes[1][1].set_title("全部权重对比（L2 压小噪声特征权重）")
 axes[1][1].set_ylabel("|w|（权重绝对值）")
 axes[1][1].legend()
 axes[1][1].grid(True, alpha=0.3, axis='y')
